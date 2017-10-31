@@ -15,16 +15,16 @@ class UiBenchTest(LisaBenchmark):
     bm_name = 'UiBench'
 
     # Default products to be collected
-    bm_collect = 'ftrace energy'
+    bm_collect = 'ftrace'
 
     def benchmarkInit(self):
         self.setupWorkload()
         self.setupGovernor()
 
-    def __init__(self, governor, test, duration_s):
+    def __init__(self, governor, test, iterations):
         self.governor = governor
         self.test = test
-        self.duration_s = duration_s
+        self.iterations = iterations
         super(UiBenchTest, self).__init__()
 
     def setupWorkload(self):
@@ -37,7 +37,7 @@ class UiBenchTest(LisaBenchmark):
         # Setup workload parameters
         self.bm_params = {
             'test_name'  : self.test,
-            'duration_s' : self.duration_s,
+            'iterations' : self.iterations,
         }
 
     def setupGovernor(self):
@@ -93,7 +93,7 @@ class UiBenchTest(LisaBenchmark):
 
 # Run the benchmark in each of the supported governors
 
-duration_s = 20
+iterations = 10
 
 governors = [
     'performance',
@@ -106,25 +106,24 @@ governors = [
 
 tests = [
 # General
-    'DialogListActivity',
-    'FullscreenOverdrawActivity',
-    'GlTextureViewActivity',
-    'InvalidateActivity',
-    'TrivialAnimationActivity',
-    'TrivialListActivity',
-    'TrivialRecyclerViewActivity',
+    'UiBenchJankTests#testDialogListFling',
+    'UiBenchJankTests#testFullscreenOverdraw',
+    'UiBenchJankTests#testGLTextureView',
+    'UiBenchJankTests#testInvalidate',
+    'UiBenchJankTests#testTrivialAnimation',
+    'UiBenchJankTests#testTrivialListViewFling',
+    'UiBenchJankTests#testTrivialRecyclerListViewFling',
 # Inflation
-    'InflatingListActivity',
+    'UiBenchJankTests#testInflatingListViewFling',
 # Rendering
-    'BitmapUploadActivity',
-    'ShadowGridActivity',
+    'UiBenchRenderingJankTests#testBitmapUploadJank',
+    'UiBenchRenderingJankTests#testShadowGridListFling',
 # Text
-    'EditTextTypeActivity',
-    'TextCacheHighHitrateActivity',
-    'TextCacheLowHitrateActivity',
+    'UiBenchTextJankTests#testEditTextTyping',
+    'UiBenchTextJankTests#testLayoutCacheHighHitrateFling',
+    'UiBenchTextJankTests#testLayoutCacheLowHitrateFling',
 # Transitions
-    'ActivityTransition',
-    'ActivityTransitionDetails',
+    'UiBenchTransitionsJankTests#testActivityTransitionsAnimation',
 ]
 
 tests_remaining = len(governors) * len(tests)
@@ -133,7 +132,7 @@ for governor in governors:
     for test in tests:
         tests_remaining -= 1
         try:
-            UiBenchTest(governor, test, duration_s)
+            UiBenchTest(governor, test, iterations)
             tests_completed += 1
         except:
             # A test configuraion failed, continue with other tests

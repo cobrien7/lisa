@@ -49,6 +49,13 @@ LATEST_LINK = 'results_latest'
 basepath = os.path.dirname(os.path.realpath(__file__))
 basepath = basepath.replace('/libs/utils', '')
 
+def os_which(file):
+    for path in os.environ["PATH"].split(os.pathsep):
+        if os.path.exists(os.path.join(path, file)):
+           return os.path.join(path, file)
+
+    return None
+
 class ShareState(object):
     __shared_state = {}
 
@@ -96,6 +103,21 @@ class TestEnv(ShareState):
         **ANDROID_HOME**
             Path to Android SDK. Defaults to ``$ANDROID_HOME`` from the
             environment.
+        **ANDROID_BUILD_TOP**
+            Path to Android root directory. Defaults to ``$ANDROID_BUILD_TOP`` from the
+            environment.
+        **TARGET_PRODUCT**
+            Target product in the lunch target. Defaults to ``$TARGET_PRODUCT`` from the
+            environment.
+        **TARGET_BUILD_VARIANT**
+            Target build variant in the lunch target. Defaults to ``$TARGET_BUILD_VARIANT`` from the
+            environment.
+        **ANDROID_PRODUCT_OUT**
+            Path to Android output directory. Defaults to ``$ANDROID_PRODUCT_OUT`` from the
+            environment.
+        **DEVICE_LISA_HOME**
+            Path to device-specific LISA directory. Set to ``$DEVICE_LISA_HOME`` from the
+            environment.
         **rtapp-calib**
             Calibration values for RT-App. If unspecified, LISA will
             calibrate RT-App on the target. A message will be logged with
@@ -137,6 +159,17 @@ class TestEnv(ShareState):
                 functions to enable in the function tracer. Optional.
             buffsize
                 Size of buffer. Default is 10240.
+
+        **systrace**
+            Configuration for systrace. Dictionary with keys:
+            categories:
+                overide the list of categories enabled
+            extra_categories:
+                append to the default list of categories
+            extra_events:
+                additional ftrace events to manually enable during systrac'ing
+            buffsize:
+                Size of ftrace buffer that systrace uses
 
         **results_dir**
             location of results of the experiments
@@ -187,6 +220,11 @@ class TestEnv(ShareState):
         # Keep track of android support
         self.LISA_HOME = os.environ.get('LISA_HOME', '/vagrant')
         self.ANDROID_HOME = os.environ.get('ANDROID_HOME', None)
+        self.ANDROID_BUILD_TOP = os.environ.get('ANDROID_BUILD_TOP', None)
+        self.TARGET_PRODUCT = os.environ.get('TARGET_PRODUCT', None)
+        self.TARGET_BUILD_VARIANT = os.environ.get('TARGET_BUILD_VARIANT', None)
+        self.ANDROID_PRODUCT_OUT = os.environ.get('ANDROID_PRODUCT_OUT', None)
+        self.DEVICE_LISA_HOME = os.environ.get('DEVICE_LISA_HOME', None)
         self.CATAPULT_HOME = os.environ.get('CATAPULT_HOME',
                 os.path.join(self.LISA_HOME, 'tools', 'catapult'))
 
@@ -386,12 +424,28 @@ class TestEnv(ShareState):
                 self._fastboot = os.path.join(self.ANDROID_HOME,
                                               'platform-tools', 'fastboot')
                 os.environ['ANDROID_HOME'] = self.ANDROID_HOME
+                os.environ['ANDROID_BUILD_TOP'] = self.ANDROID_BUILD_TOP
+                os.environ['TARGET_PRODUCT'] = self.TARGET_PRODUCT
+                os.environ['TARGET_BUILD_VARIANT'] = self.TARGET_BUILD_VARIANT
+                os.environ['ANDROID_PRODUCT_OUT'] = self.ANDROID_PRODUCT_OUT
+                os.environ['DEVICE_LISA_HOME'] = self.DEVICE_LISA_HOME
                 os.environ['CATAPULT_HOME'] = self.CATAPULT_HOME
             else:
-                raise RuntimeError('Android SDK not found, ANDROID_HOME must be defined!')
+                self._log.info('Android SDK not found as ANDROID_HOME not defined, using PATH for platform tools')
+                self._adb = os_which('adb')
+                self._fastboot = os_which('fastboot')
+                if self._adb:
+                    self._log.info('Using adb from ' + self._adb)
+                if self._fastboot:
+                    self._log.info('Using fastboot from ' + self._fastboot)
 
             self._log.info('External tools using:')
             self._log.info('   ANDROID_HOME: %s', self.ANDROID_HOME)
+            self._log.info('   ANDROID_BUILD_TOP: %s', self.ANDROID_BUILD_TOP)
+            self._log.info('   TARGET_PRODUCT: %s', self.TARGET_PRODUCT)
+            self._log.info('   TARGET_BUILD_VARIANT: %s', self.TARGET_BUILD_VARIANT)
+            self._log.info('   ANDROID_PRODUCT_OUT: %s', self.ANDROID_PRODUCT_OUT)
+            self._log.info('   DEVICE_LISA_HOME: %s', self.DEVICE_LISA_HOME)
             self._log.info('   CATAPULT_HOME: %s', self.CATAPULT_HOME)
 
             if not os.path.exists(self._adb):
@@ -559,6 +613,8 @@ class TestEnv(ShareState):
                 raise RuntimeError('Failed to initialized [{}] module, '
                         'update your kernel or test configurations'.format(module))
 
+        if ('skip_nrg_model' in self.conf) and self.conf['skip_nrg_model']:
+            return
         if not self.nrg_model:
             try:
                 self._log.info('Attempting to read energy model from target')

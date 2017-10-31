@@ -38,6 +38,12 @@ class AnalysisModule(object):
 
         self._dfg_trace_event = trace._dfg_trace_event
 
+        trace._registerDataFrameGetters(self)
+
+        # Further initialization not possible if platform info is missing
+        if not self._platform:
+            return
+
         # By default assume SMP system
         self._big_cap = 1024
         self._little_cap = 1024
@@ -48,7 +54,5 @@ class AnalysisModule(object):
             self._little_cap = self._platform['nrg_model']['little']['cpu']['cap_max']
             self._big_cpus = self._platform['clusters']['big']
             self._little_cpus = self._platform['clusters']['little']
-
-        trace._registerDataFrameGetters(self)
 
 # vim :set tabstop=4 shiftwidth=4 expandtab
